@@ -12,7 +12,7 @@ address_1 = "16386" # voltage
 address_2 = "16402" # current
 
 # read urls for testing
-URL_1 = "modbus://{}"
+URL_1 = "modbus://192.168.13.3/read-registers/16386?type=f"
 url_1 = "modbus://{}/{}/{}?type={}".format(host_1, function_1, address_1)
 url_2 = "modbus://{}/{}/{}?type={}".format(host_1, function_1)
 
