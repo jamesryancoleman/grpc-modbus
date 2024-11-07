@@ -1,4 +1,5 @@
 from modbus_parser import MODbusParams
+import client
 # functions
 READ_REGISTER = "read-register"
 READ_MULTIPLE_REGISTERS = "read-registers"
@@ -21,16 +22,30 @@ url_2 = "modbus://{}/{}/{}/{}?type=f".format(host_1, port_number, function_1, ad
 
 tests = [url_1, url_2]
 
+def get_test(key:str):
+    res = client.Get(key)
+    print("{} -> '{}'".format(key, res))
+
+def get_multiple_test(keys:list[str]):
+    res = client.GetMultiple(keys)
+    for r in res:
+        print("{} -> '{}'".format(r.Key, r.Value))
+
 # TODO compile a regex with named matches to extract the parameters needed by 
 # py-modbus to get the actual value.
 # probably something like
 # modbus_regex = re.compile(r'^(?P<schema>[a-z]+)://(?P<host>[a-zA-Z0-9.-]+):?(?P<port>[0-9]+)?/(?P<func>[a-zA-Z-_.,]+)?/(?P<address>[0-9]+)\?type=?P<type>[fH]')
 modbus_pattern = r"^modbus://(?P<host>[a-zA-Z0-9.-]+)/(?P<port>[0-9]+)/(?P<function>[a-zA-Z-_]+)/(?P<address>[0-9]+)\?type=(?P<type>[a-zA-Z]+)$"
 if __name__ == "__main__":
-    # parse the url
+    # test the parser
     params = MODbusParams(url_1)
     params.PrintParams()
+
     assert URL_1 == url_1
+
+    # test Get()
     for t in tests:
-        # TODO write a client that sends a GetRequest with a Key of t for each url in tests
-        pass
+        get_test(t)
+
+    # test GetMultiple()
+    get_multiple_test([url_1,url_2])
