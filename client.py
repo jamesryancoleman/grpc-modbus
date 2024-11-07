@@ -1,5 +1,42 @@
-# TODO implement the grpc client that will call the GetSetRun Server's Get method
-# the client will be used in client_test.py to call the server.
+import sys
+import grpc
+import device_pb2
+import device_pb2_grpc
 
-# see the below reference file
-# https://github.com/jamesryancoleman/bos/blob/main/services/device/drivers/bacnet/client.py
+# device_address = "192.168.13.3"
+# description = "Power Monitor"
+
+"""Usage:
+    client sends a uri that identifies point it would like to access.
+
+    e.g., ""modbus://192.168.13.3/502/read-registers/16386?type=f"
+    
+"""
+
+def Get(key:str, addr="localhost:50062") -> str:
+    header = device_pb2.Header(Src="localhost:2823", Dst=addr)
+
+    with grpc.insecure_channel(addr) as channel:
+        stub = device_pb2_grpc.GetSetRunStub(channel)
+        result:device_pb2.GetResponse
+        result = stub.Get(device_pb2.GetRequest(
+            Header=header,
+            Key=key,
+        ))
+        return result.Value
+    
+
+def GetMultiple(keys:list[str], addr="localhost:50062") -> list[device_pb2.GetResponse]:
+    header = device_pb2.Header(Src="localhost:2823", Dst=addr)
+    with grpc.insecure_channel(addr) as channel:
+        stub = device_pb2_grpc.GetSetRunStub(channel)
+        result:device_pb2.GetMultipleResponse
+        result = stub.GetMultiple(device_pb2.GetMultipleRequest(
+            Header=header,
+            Keys=keys
+        ))
+    
+    return result.Responses
+
+if __name__=="__main__":
+    pass
