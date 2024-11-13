@@ -27,9 +27,11 @@ def get_test(key:str):
     print("{} -> '{}'".format(key, res))
 
 def get_multiple_test(keys:list[str]):
-    res = client.GetMultiple(keys)
-    for r in res:
-        print("{} -> '{}'".format(r.Key, r.Value))
+    pass
+
+    # res = client.GetMultiple(keys)
+    # for r in res:
+     #   print("{} -> '{}'".format(r.Key, r.Value))
 
 # TODO compile a regex with named matches to extract the parameters needed by 
 # py-modbus to get the actual value.

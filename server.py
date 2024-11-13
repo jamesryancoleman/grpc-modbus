@@ -3,6 +3,7 @@
 A gRPC server to handle modbus work.
 
 """
+import asyncio
 from modbus_parser import MODbusParams
 from pymodbus import pymodbus_apply_logging_config
 # --------------------------------------------------------------------------- #
@@ -76,7 +77,8 @@ def read_register(client: ModbusTcpClient) -> None:
     _logger.info(f"*** READ *** of address {client.address} = {value}")
 
     value = client.convert_from_registers(rr.registers, data_type) # took out the *factor, but can add it in later
-    
+    if value is None:
+        value = "None"
     return value
 
 def write_register():
@@ -127,11 +129,17 @@ class modbusRPCServer(device_pb2_grpc.GetSetRunServicer):
 
         # read the register
         value = read_register(client)
+        if value is None:
+            value = "Nothing"
 
         # close the client and return the response -- ERROR HANDLING???
         client.close()
 
         _logger.info("### End of Get -> Now Making the GetResponse")
+        _logger.info("header is", header)
+        _logger.info("key is", request.key)
+        _logger.info("value is ", value)
+    
         return device_pb2.GetResponse(
             Header=header,
             Key=request.Key,
@@ -148,3 +156,28 @@ class modbusRPCServer(device_pb2_grpc.GetSetRunServicer):
         header = device_pb2.Header(Src=request.Header.Src, Dst=request.Header.Dst)
     def SetMultiple(self, request:device_pb2.SetMultipleRequest, context):
         header = device_pb2.Header(Src=request.Header.Src, Dst=request.Header.Dst)
+# need to use specified port in the oxigraph instance
+async def serve(port:str="50062") -> None:
+    # GRPC set up
+    server = grpc.aio.server()
+    device_pb2_grpc.add_GetSetRunServicer_to_server(modbusRPCServer(), server)
+    server.add_insecure_port("[::]:" + port)
+    logging.info("Server started. Listening on port: %s", port)
+    await server.start()
+    # server.wait_for_termination()
+
+    async def server_graceful_shutdown():
+        logging.info("Starting graceful shutdown")
+        await server.stop(5)
+    
+    await server.wait_for_termination()
+
+if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
+    # loop = asyncio.get_event_loop()
+    loop = asyncio.new_event_loop()
+
+    try:
+        loop.run_until_complete(serve())
+    finally:
+        loop.close()

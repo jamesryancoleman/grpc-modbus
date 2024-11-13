@@ -14,7 +14,7 @@ import device_pb2_grpc
 """
 
 def Get(key:str, addr="localhost:50062") -> str:
-    header = device_pb2.Header(Src="localhost:2823", Dst=addr)
+    header = device_pb2.Header(Src="localhost:2822", Dst=addr)
 
     with grpc.insecure_channel(addr) as channel:
         stub = device_pb2_grpc.GetSetRunStub(channel)
@@ -27,7 +27,7 @@ def Get(key:str, addr="localhost:50062") -> str:
     
 
 def GetMultiple(keys:list[str], addr="localhost:50062") -> list[device_pb2.GetResponse]:
-    header = device_pb2.Header(Src="localhost:2823", Dst=addr)
+    header = device_pb2.Header(Src="localhost:2822", Dst=addr)
     with grpc.insecure_channel(addr) as channel:
         stub = device_pb2_grpc.GetSetRunStub(channel)
         result:device_pb2.GetMultipleResponse
