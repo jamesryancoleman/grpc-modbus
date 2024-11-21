@@ -38,7 +38,7 @@ def get_data_type(format: str) -> Enum:
         if data_type.value[0] == format:
             return data_type
 
-def read_register(client: ModbusTcpClient) -> None:
+def read_register(client: ModbusTcpClient, type_param: str, address: str) -> None:
     """
     Reads a register from a Modbus device using a Modbus TCP client.
 
@@ -54,28 +54,30 @@ def read_register(client: ModbusTcpClient) -> None:
     Returns:
         None
     """
-    data_type = get_data_type(format)
+    print("source adddress is :", address)
+
+    data_type = get_data_type(type_param) # format is the char representing the data type
     _logger.info(f"data_type is {data_type}")
     count = data_type.value[1] # this is the number of bytes to read
     _logger.info(f"count is {count}")
     var_type = data_type.name
     _logger.info(f"*** Reading ({var_type})")
-    count = 1
+    # count = 1
     try: # NOT SURE SLAVE IS NEEDED BUT NEED TO TEST -- THINK COUNT NEEDS TO BE reg_nb=count
-        rr = client.read_holding_registers(address=client.address, count=count, slave=1)
-
+        rr = client.read_holding_registers(address=int(address), count=count, slave=1)
+        print("cleared rr assignment: ", rr)
     except ModbusException as exc:
         _logger.error(f"Modbus exception: {exc!s}")
         error = True
-    if rr.isError():
-        _logger.error(f"Error")
-        error = True
-    if isinstance(rr, ExceptionResponse):
-        _logger.error(f"Response exception: {rr!s}")
-        error = True
+        if rr.isError():
+            _logger.error(f"Error")
+            error = True
+        if isinstance(rr, ExceptionResponse):
+            _logger.error(f"Response exception: {rr!s}")
+            error = True
 
-    _logger.info(f"*** READ *** of address {client.address} = {value}")
-
+    _logger.info(f"*** READ *** of address {address} = {rr}")
+    print("rr.registers", rr.registers)
     value = client.convert_from_registers(rr.registers, data_type) # took out the *factor, but can add it in later
     if value is None:
         value = "None"
@@ -114,11 +116,13 @@ class modbusRPCServer(device_pb2_grpc.GetSetRunServicer):
         # parse the params
         print("request key is ", request.Key)
         params = MODbusParams(request.Key)
-
+        print("host is ", params.host)
+        print("port is ", params.port)
         # create and connect to the client
         client: ModbusTcpClient = ModbusTcpClient(
         host=params.host,
         port=params.port,
+        # source_address = (params.host, int(params.port)),
         # Common optional parameters: NOT INCLUDED RN
         framer=FramerType.SOCKET,
         timeout=5,
@@ -128,7 +132,10 @@ class modbusRPCServer(device_pb2_grpc.GetSetRunServicer):
         sleep(1)
 
         # read the register
-        value = read_register(client)
+        print("client: ", client)
+        print("type_param", params.type_param)
+        print("address", params.address)
+        value = read_register(client, params.type_param, params.address)
         if value is None:
             value = "Nothing"
 
@@ -136,9 +143,9 @@ class modbusRPCServer(device_pb2_grpc.GetSetRunServicer):
         client.close()
 
         _logger.info("### End of Get -> Now Making the GetResponse")
-        _logger.info("header is", header)
-        _logger.info("key is", request.key)
-        _logger.info("value is ", value)
+        print("header is", header)
+        print("key is", request.Key)
+        print("value is ", value)
     
         return device_pb2.GetResponse(
             Header=header,
