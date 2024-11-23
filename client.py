@@ -38,5 +38,20 @@ def GetMultiple(keys:list[str], addr="localhost:50062") -> list[device_pb2.GetRe
     
     return result.Responses
 
+def Set(key:str, value:str, addr="localhost:50062") -> device_pb2.SetResponse:
+    header = device_pb2.Header(Src="localhost:2822")
+    
+    result:device_pb2.SetResponse
+
+    with grpc.insecure_channel(addr) as channel:
+        stub = device_pb2_grpc.GetSetRunStub(channel)
+
+        result = stub.Get(device_pb2.SetRequest(
+            Header=header,
+            Key=key,
+            Value=value, 
+        ))
+    
+    return result
 if __name__=="__main__":
     pass

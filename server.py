@@ -159,10 +159,56 @@ class modbusRPCServer(device_pb2_grpc.GetSetRunServicer):
         # want to test Get before I do GetMultiple()
         # will problably be a loop with some weird figuring out of results
 
+    def write_register(client, address, value):
+        response = None
+        try:
+            response = client.write_registers(address=address, values=value, slave=1)
+            print("write is:", response)
+        except ModbusException as exc:
+            print(f"Modbus exception: {exc!s}")
+            error = True
+        return(str(response)) # return response or None
+
     def Set(self, request:device_pb2.SetRequest, context):
         header = device_pb2.Header(Src=request.Header.Src, Dst=request.Header.Dst)
+        logging.info('received Set request: ', request)
+
+        Ok = False
+
+        # parse the params
+        print("request key is ", request.Key)
+        params = MODbusParams(request.Key)
+        params.PrintParams()
+
+        client: ModbusTcpClient = ModbusTcpClient(
+        host=params.host,
+        port=params.port,
+        # source_address = (params.host, int(params.port)),
+        # Common optional parameters: NOT INCLUDED RN
+        framer=FramerType.SOCKET,
+        timeout=5,
+        )
+        client.connect()
+        _logger.info("### Client connected")
+        sleep(1)
+        print("type_param", params.type_param)
+        print("address", params.address)
+
+        value = write_register(client, params.value, params.address)
+        
+        if value:
+            Ok = True
+
+        return device_pb2.SetResponse(
+            Header = header,
+            Ok = Ok,
+            Key = request.Key,
+            Value = str(params.value)
+        )
+        
     def SetMultiple(self, request:device_pb2.SetMultipleRequest, context):
         header = device_pb2.Header(Src=request.Header.Src, Dst=request.Header.Dst)
+
 # need to use specified port in the oxigraph instance
 async def serve(port:str="50062") -> None:
     # GRPC set up

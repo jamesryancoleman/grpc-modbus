@@ -3,28 +3,37 @@ import client
 # functions
 READ_REGISTER = "read-register"
 READ_MULTIPLE_REGISTERS = "read-registers"
-
+WRITE_REGISTER = "write-register"
 # test parameters
 host_1 = "192.168.13.3"   # change this to the right IP address
 function_1 = READ_MULTIPLE_REGISTERS
+function_2 = WRITE_REGISTER
 
 address_1 = "16386" # voltage
 address_2 = "16402" # current
+address_3 = "4104" # CT1 (current transformer)
+address_4 = "4105" # CT2 (current transformer)
 
 port_number = "502"
 
 port_number = "502"
 
 # read urls for testing
-URL_1 = "modbus://192.168.13.3/502/read-registers/16386?type=f"
-url_1 = "modbus://{}/{}/{}/{}?type=f".format(host_1, port_number, function_1, address_1)
-url_2 = "modbus://{}/{}/{}/{}?type=f".format(host_1, port_number, function_1, address_2)
+URL_1 = "modbus://192.168.13.3:502/read-registers/?type=f"
+# URL_2 = "modbus://192.168.13.3:502/write-registers/?type=f&value=20"
 
-tests = [url_1, url_2]
+url_1 = "modbus://{}:{}/{}/{}?type=f".format(host_1, port_number, function_1, address_1)
+url_2 = "modbus://{}:{}/{}/{}?type=f".format(host_1, port_number, function_1, address_2)
+url_3 = "modbus://{}:{}/{}/{}?type=f&value=20".format(host_1, port_number, function_2, address_3)
+url_4 = "modbus://{}:{}/{}/{}?type=f&value=333".format(host_1, port_number, function_2, address_4)
+full_url_list = [url_1, url_2, url_3, url_4]
+read_tests = [url_1, url_2]
+write_tests = [url_3, url_4]
 
 def get_test(key:str):
     res = client.Get(key)
     print("{} -> '{}'".format(key, res))
+
 
 def get_multiple_test(keys:list[str]):
     pass
@@ -33,21 +42,29 @@ def get_multiple_test(keys:list[str]):
     # for r in res:
      #   print("{} -> '{}'".format(r.Key, r.Value))
 
+def set_test(key: str):
+    res = client.Set(key)
+    print("{} -> '{}'".format(key, res))
+
 # TODO compile a regex with named matches to extract the parameters needed by 
 # py-modbus to get the actual value.
 # probably something like
 # modbus_regex = re.compile(r'^(?P<schema>[a-z]+)://(?P<host>[a-zA-Z0-9.-]+):?(?P<port>[0-9]+)?/(?P<func>[a-zA-Z-_.,]+)?/(?P<address>[0-9]+)\?type=?P<type>[fH]')
-modbus_pattern = r"^modbus://(?P<host>[a-zA-Z0-9.-]+)/(?P<port>[0-9]+)/(?P<function>[a-zA-Z-_]+)/(?P<address>[0-9]+)\?type=(?P<type>[a-zA-Z]+)$"
+modbus_pattern = r"^modbus://(?P<host>[a-zA-Z0-9.-]+):(?P<port>[0-9]+)/(?P<function>[a-zA-Z-]+)/(?P<address>[0-9]+)/\?type=(?P<type>[a-zA-Z]+)&value=(?P<value>[0-9]+)"
 if __name__ == "__main__":
     # test the parser
-    params = MODbusParams(url_1)
-    params.PrintParams()
-
-    assert URL_1 == url_1
+    for url in full_url_list:
+        # print(url)
+        params = MODbusParams(url)
+        params.PrintParams()
 
     # test Get()
-    for t in tests:
+    for t in read_tests:
         get_test(t)
 
     # test GetMultiple()
     get_multiple_test([url_1,url_2])
+
+    # test Set()
+    for t in write_tests:
+        set_test(t)
