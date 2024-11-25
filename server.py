@@ -19,6 +19,7 @@ import device_pb2
 import device_pb2_grpc
 import logging
 from enum import Enum
+from typing import Union
 
 pymodbus_apply_logging_config(logging.ERROR)
 
@@ -38,12 +39,25 @@ def get_data_type(format: str) -> Enum:
         if data_type.value[0] == format:
             return data_type
         
-def write_register(client: ModbusTcpClient, address: str, value):
+def write_register(client: ModbusTcpClient, address: str, value: str) -> Union[str, None]:
+    """
+    Writes a register from a Modbus device using a Modbus TCP client.
+
+    This function sends a write request ot the Modbus device specified by the 
+    `client` parameter and writes the value to a specified register. 
+
+    Parameters:
+        client (ModbusTcpClient): An instance of ModbusTcpClient used to 
+                                  communicate with the Modbus device.
+        address (str): The address on the Modbus device to write to.
+        value(str): The value to write to at the specified address on the Modbus device.
+
+    Returns a string representation of the response (ex. WriteMultipleRegisterResponse (4104,1))
+    """
     response = None
     try:
         response = client.write_registers(address=int(address), values=int(value), slave=1)
-        
-        print("write value is :", response)
+        print("Response is: ", response)
     except ModbusException as exc:
         print(f"Modbus exception: {exc!s}")
         error = True
@@ -66,19 +80,14 @@ def read_register(client: ModbusTcpClient, type_param: str, address: str) -> Non
     Returns:
         None
     """
-    print("source adddress is :", address)
-
     data_type = get_data_type(type_param) # format is the char representing the data type
-    _logger.info(f"data_type is {data_type}")
     count = data_type.value[1] # this is the number of bytes to read
-    _logger.info(f"count is {count}")
+    _logger.info(f"*** Reading {count} bytes")
     var_type = data_type.name
     _logger.info(f"*** Reading ({var_type})")
-    # count = 1
     rr = None
     try: # NOT SURE SLAVE IS NEEDED BUT NEED TO TEST -- THINK COUNT NEEDS TO BE reg_nb=count
         rr = client.read_holding_registers(address=int(address), count=count, slave=1)
-        print("cleared rr assignment: ", rr)
     except ModbusException as exc:
         _logger.error(f"Modbus exception: {exc!s}")
         error = True
@@ -90,7 +99,6 @@ def read_register(client: ModbusTcpClient, type_param: str, address: str) -> Non
             error = True
 
     _logger.info(f"*** READ *** of address {address} = {rr}")
-    print("rr.registers", rr.registers)
     value = client.convert_from_registers(rr.registers, data_type) # took out the *factor, but can add it in later
     if value is None:
         value = "None"
@@ -123,18 +131,12 @@ class modbusRPCServer(device_pb2_grpc.GetSetRunServicer):
         logging.info('received Get request: ', request)
 
         header = device_pb2.Header(Src=request.Header.Dst, Dst=request.Header.Src)
-
         # parse the params
-        print("request key is ", request.Key)
         params = MODbusParams(request.Key)
-        print("host is ", params.host)
-        print("port is ", params.port)
         # create and connect to the client
         client: ModbusTcpClient = ModbusTcpClient(
         host=params.host,
         port=params.port,
-        # source_address = (params.host, int(params.port)),
-        # Common optional parameters: NOT INCLUDED RN
         framer=FramerType.SOCKET,
         timeout=5,
         )
@@ -143,19 +145,14 @@ class modbusRPCServer(device_pb2_grpc.GetSetRunServicer):
         sleep(1)
 
         # read the register
-        print("client: ", client)
-        print("type_param", params.type_param)
-        print("address", params.address)
         value = read_register(client, params.type_param, params.address)
         if value is None:
             value = "Nothing"
 
-        # close the client and return the response -- ERROR HANDLING???
+        # close the client and return the response
         client.close()
 
         _logger.info("### End of Get -> Now Making the GetResponse")
-        print("header is", header)
-        print("key is", request.Key)
     
         return device_pb2.GetResponse(
             Header=header,
@@ -177,25 +174,19 @@ class modbusRPCServer(device_pb2_grpc.GetSetRunServicer):
         Ok = False
 
         # parse the params
-        print("request key is ", request.Key)
         params = MODbusParams(request.Key)
         params.PrintParams()
-
+        # create and connect to the client
         client: ModbusTcpClient = ModbusTcpClient(
         host=params.host,
         port=params.port,
-        # source_address = (params.host, int(params.port)),
-        # Common optional parameters: NOT INCLUDED RN
         framer=FramerType.SOCKET,
         timeout=5,
         )
         client.connect()
         _logger.info("### Client connected")
         sleep(1)
-        print("type_param", params.type_param)
-        print("address", params.address)
-        print("value to write", params.value)
-
+        # write to the register
         response_value = write_register(client, params.address, params.value)
         
         if response_value:

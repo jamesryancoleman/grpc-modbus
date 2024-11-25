@@ -63,8 +63,8 @@ def write_register(client: ModbusTcpClient) -> None:
         error = True
 
     try:
-        rr1 = client.write_registers(address=4104, values=20, slave=1)
-        rr = client.write_registers(address=4105, values=333, slave=1)
+        rr1 = client.write_registers(address=4104, values=333, slave=1)
+        rr = client.write_registers(address=4105, values=20, slave=1)
 
         _logger.info(f"write is {rr}")
         _logger.info(f"write is {rr1}")
