@@ -37,6 +37,18 @@ def get_data_type(format: str) -> Enum:
     for data_type in ModbusTcpClient.DATATYPE:
         if data_type.value[0] == format:
             return data_type
+        
+def write_register(client: ModbusTcpClient, address: str, value):
+    response = None
+    try:
+        response = client.write_registers(address=int(address), values=int(value), slave=1)
+        
+        print("write value is :", response)
+    except ModbusException as exc:
+        print(f"Modbus exception: {exc!s}")
+        error = True
+            
+    return(str(response)) # return response or None
 
 def read_register(client: ModbusTcpClient, type_param: str, address: str) -> None:
     """
@@ -63,6 +75,7 @@ def read_register(client: ModbusTcpClient, type_param: str, address: str) -> Non
     var_type = data_type.name
     _logger.info(f"*** Reading ({var_type})")
     # count = 1
+    rr = None
     try: # NOT SURE SLAVE IS NEEDED BUT NEED TO TEST -- THINK COUNT NEEDS TO BE reg_nb=count
         rr = client.read_holding_registers(address=int(address), count=count, slave=1)
         print("cleared rr assignment: ", rr)
@@ -83,8 +96,6 @@ def read_register(client: ModbusTcpClient, type_param: str, address: str) -> Non
         value = "None"
     return value
 
-def write_register():
-    pass
 
 class modbusRPCServer(device_pb2_grpc.GetSetRunServicer): 
     """
@@ -145,7 +156,6 @@ class modbusRPCServer(device_pb2_grpc.GetSetRunServicer):
         _logger.info("### End of Get -> Now Making the GetResponse")
         print("header is", header)
         print("key is", request.Key)
-        print("value is ", value)
     
         return device_pb2.GetResponse(
             Header=header,
@@ -159,15 +169,6 @@ class modbusRPCServer(device_pb2_grpc.GetSetRunServicer):
         # want to test Get before I do GetMultiple()
         # will problably be a loop with some weird figuring out of results
 
-    def write_register(client, address, value):
-        response = None
-        try:
-            response = client.write_registers(address=address, values=value, slave=1)
-            print("write is:", response)
-        except ModbusException as exc:
-            print(f"Modbus exception: {exc!s}")
-            error = True
-        return(str(response)) # return response or None
 
     def Set(self, request:device_pb2.SetRequest, context):
         header = device_pb2.Header(Src=request.Header.Src, Dst=request.Header.Dst)
@@ -193,10 +194,11 @@ class modbusRPCServer(device_pb2_grpc.GetSetRunServicer):
         sleep(1)
         print("type_param", params.type_param)
         print("address", params.address)
+        print("value to write", params.value)
 
-        value = write_register(client, params.value, params.address)
+        response_value = write_register(client, params.address, params.value)
         
-        if value:
+        if response_value:
             Ok = True
 
         return device_pb2.SetResponse(

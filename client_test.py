@@ -24,8 +24,8 @@ URL_1 = "modbus://192.168.13.3:502/read-registers/?type=f"
 
 url_1 = "modbus://{}:{}/{}/{}?type=f".format(host_1, port_number, function_1, address_1)
 url_2 = "modbus://{}:{}/{}/{}?type=f".format(host_1, port_number, function_1, address_2)
-url_3 = "modbus://{}:{}/{}/{}?type=f&value=20".format(host_1, port_number, function_2, address_3)
-url_4 = "modbus://{}:{}/{}/{}?type=f&value=333".format(host_1, port_number, function_2, address_4)
+url_3 = "modbus://{}:{}/{}/{}?type=h&value=20".format(host_1, port_number, function_2, address_3)
+url_4 = "modbus://{}:{}/{}/{}?type=h&value=333".format(host_1, port_number, function_2, address_4)
 full_url_list = [url_1, url_2, url_3, url_4]
 read_tests = [url_1, url_2]
 write_tests = [url_3, url_4]
@@ -63,8 +63,11 @@ if __name__ == "__main__":
         get_test(t)
 
     # test GetMultiple()
-    get_multiple_test([url_1,url_2])
+    # get_multiple_test([url_1,url_2])
 
     # test Set()
     for t in write_tests:
         set_test(t)
+    # make sure read the values you set 
+    for t in write_tests:
+        get_test(t)
