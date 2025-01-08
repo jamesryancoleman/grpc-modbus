@@ -15,8 +15,8 @@ from pymodbus.pdu import ExceptionResponse
 from pymodbus import FramerType
 from time import sleep
 import grpc
-import device_pb2
-import device_pb2_grpc
+import comms_pb2
+import comms_pb2_grpc
 import logging
 from enum import Enum
 from typing import Union
@@ -104,33 +104,38 @@ def read_register(client: ModbusTcpClient, type_param: str, address: str) -> Non
         value = "None"
     return value
 
-
-class modbusRPCServer(device_pb2_grpc.GetSetRunServicer): 
+# TODO: GetMultiple becomes Get, Set Multiple becomes Set. Remove old get and set.
+# Get now takes keys, a []str, and returns a GetResponse with field Pairs, as list of GetPairs.
+# For each key in keys, return a comms.GetPair(Key=k, Value=v, Error=None|err).
+# Set now takes a list of SetPairs(key, value)
+# Set now returns a list of SetPair with the Ok field set to True if it worked,
+# or False if it failed.
+class modbusRPCServer(comms_pb2_grpc.GetSetRunServicer): 
     """
     A gRPC server implementation for handling Modbus RPC requests.
 
-    This class extends the GetSetRunServicer provided by the device_pb2_grpc module,
+    This class extends the GetSetRunServicer provided by the comms_pb2_grpc module,
     implementing methods to facilitate Modbus communication over gRPC. It serves as 
     the interface for clients to perform read and write operations on Modbus devices.
     
     Methods:
-        Get(request: device_pb2.GetRequest, context): 
+        Get(request: comms_pb2.GetRequest, context): 
             Handles requests to read data from a Modbus device.
         
-        Set(request: device_pb2.SetRequest, context): 
+        Set(request: comms_pb2.SetRequest, context): 
             Handles requests to write data to a Modbus device.
         
-        GetMultiple(request: device_pb2.GetMultipleRequest, context): 
+        GetMultiple(request: comms_pb2.GetMultipleRequest, context): 
             Handles requests to read multiple data points from a Modbus device.
         
-        SetMultiple(request: device_pb2.SetMultipleRequest, context): 
+        SetMultiple(request: comms_pb2.SetMultipleRequest, context): 
             Handles requests to write multiple data points to a Modbus device.
     """
 
-    def Get(self, request:device_pb2.GetRequest, context):
+    def Get(self, request:comms_pb2.GetRequest, context):
         logging.info('received Get request: ', request)
 
-        header = device_pb2.Header(Src=request.Header.Dst, Dst=request.Header.Src)
+        header = comms_pb2.Header(Src=request.Header.Dst, Dst=request.Header.Src)
         # parse the params
         params = MODbusParams(request.Key)
         # create and connect to the client
@@ -154,21 +159,21 @@ class modbusRPCServer(device_pb2_grpc.GetSetRunServicer):
 
         _logger.info("### End of Get -> Now Making the GetResponse")
     
-        return device_pb2.GetResponse(
+        return comms_pb2.GetResponse(
             Header=header,
             Key=request.Key,
             Value=str(value)
         )
 
 
-    def GetMultiple(self, request:device_pb2.GetMultipleRequest, context):
-        header = device_pb2.Header(Src=request.Header.Dst, Dst=request.Header.Src)
+    def GetMultiple(self, request:comms_pb2.GetMultipleRequest, context):
+        header = comms_pb2.Header(Src=request.Header.Dst, Dst=request.Header.Src)
         # want to test Get before I do GetMultiple()
         # will problably be a loop with some weird figuring out of results
 
 
-    def Set(self, request:device_pb2.SetRequest, context):
-        header = device_pb2.Header(Src=request.Header.Src, Dst=request.Header.Dst)
+    def Set(self, request:comms_pb2.SetRequest, context):
+        header = comms_pb2.Header(Src=request.Header.Src, Dst=request.Header.Dst)
         logging.info('received Set request: ', request)
 
         Ok = False
@@ -192,21 +197,21 @@ class modbusRPCServer(device_pb2_grpc.GetSetRunServicer):
         if response_value:
             Ok = True
 
-        return device_pb2.SetResponse(
+        return comms_pb2.SetResponse(
             Header = header,
             Ok = Ok,
             Key = request.Key,
             Value = str(params.value)
         )
         
-    def SetMultiple(self, request:device_pb2.SetMultipleRequest, context):
-        header = device_pb2.Header(Src=request.Header.Src, Dst=request.Header.Dst)
+    def SetMultiple(self, request:comms_pb2.SetMultipleRequest, context):
+        header = comms_pb2.Header(Src=request.Header.Src, Dst=request.Header.Dst)
 
 # need to use specified port in the oxigraph instance
 async def serve(port:str="50062") -> None:
     # GRPC set up
     server = grpc.aio.server()
-    device_pb2_grpc.add_GetSetRunServicer_to_server(modbusRPCServer(), server)
+    comms_pb2_grpc.add_GetSetRunServicer_to_server(modbusRPCServer(), server)
     server.add_insecure_port("[::]:" + port)
     logging.info("Server started. Listening on port: %s", port)
     await server.start()
