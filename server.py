@@ -124,88 +124,87 @@ class modbusRPCServer(comms_pb2_grpc.GetSetRunServicer):
         
         Set(request: comms_pb2.SetRequest, context): 
             Handles requests to write data to a Modbus device.
-        
-        GetMultiple(request: comms_pb2.GetMultipleRequest, context): 
-            Handles requests to read multiple data points from a Modbus device.
-        
-        SetMultiple(request: comms_pb2.SetMultipleRequest, context): 
-            Handles requests to write multiple data points to a Modbus device.
     """
 
     def Get(self, request:comms_pb2.GetRequest, context):
         logging.info('received Get request: ', request)
 
         header = comms_pb2.Header(Src=request.Header.Dst, Dst=request.Header.Src)
-        # parse the params
-        params = MODbusParams(request.Key)
-        # create and connect to the client
-        client: ModbusTcpClient = ModbusTcpClient(
-        host=params.host,
-        port=params.port,
-        framer=FramerType.SOCKET,
-        timeout=5,
-        )
-        client.connect()
-        _logger.info("### Client connected")
-        sleep(1)
+        pairs = []
 
-        # read the register
-        value = read_register(client, params.type_param, params.address)
-        if value is None:
-            value = "Nothing"
+        # loop over all keys in the request.Keys list
+        for key in request.Keys:
+            # parse the params
+            params = MODbusParams(key)
 
-        # close the client and return the response
-        client.close()
+            # create and connect to the client
+            client: ModbusTcpClient = ModbusTcpClient(
+            host=params.host,
+            port=params.port,
+            framer=FramerType.SOCKET,
+            timeout=5,
+            )
+            client.connect()
+            _logger.info("### Client connected")
+            sleep(1)
+            # read the register
+            value = read_register(client, params.type_param, params.address)
+            if value is None:
+                value = "Nothing"
+            # form the GetPair
+            pair = comms_pb2.GetPair(
+                Key=key,
+                Value = str(value)
+            )
+            # add GetPair to the list of pairs to return 
+            pairs.append(pair)
+
+            # close the client
+            client.close()
 
         _logger.info("### End of Get -> Now Making the GetResponse")
-    
+
+        # change the GetResponse
         return comms_pb2.GetResponse(
             Header=header,
-            Key=request.Key,
-            Value=str(value)
+            Pairs=pairs,
         )
-
-
-    def GetMultiple(self, request:comms_pb2.GetMultipleRequest, context):
-        header = comms_pb2.Header(Src=request.Header.Dst, Dst=request.Header.Src)
-        # want to test Get before I do GetMultiple()
-        # will problably be a loop with some weird figuring out of results
-
 
     def Set(self, request:comms_pb2.SetRequest, context):
         header = comms_pb2.Header(Src=request.Header.Src, Dst=request.Header.Dst)
         logging.info('received Set request: ', request)
+        pairs = []
+        # loop over all key-value pairs
+        for pair in request.Pairs:
+            Ok = False
+            # parse the params
+            params = MODbusParams(pair.Key)
+            params.PrintParams()
 
-        Ok = False
+            # create and connect to the client
+            client: ModbusTcpClient = ModbusTcpClient(
+            host=params.host,
+            port=params.port,
+            framer=FramerType.SOCKET,
+            timeout=5,
+            )
+            client.connect()
+            _logger.info("### Client connected")
+            sleep(1)
 
-        # parse the params
-        params = MODbusParams(request.Key)
-        params.PrintParams()
-        # create and connect to the client
-        client: ModbusTcpClient = ModbusTcpClient(
-        host=params.host,
-        port=params.port,
-        framer=FramerType.SOCKET,
-        timeout=5,
-        )
-        client.connect()
-        _logger.info("### Client connected")
-        sleep(1)
-        # write to the register
-        response_value = write_register(client, params.address, params.value)
+            # write to the register
+            response_value = write_register(client, params.address, pair.Value)
         
-        if response_value:
-            Ok = True
+            if response_value:
+                Ok = True
+            # construct pair and add it to the list
+            pair = comms_pb2.SetPair(Key=pair.Key, Value=response_value, Ok=Ok)
+            pairs.append(pair)
 
         return comms_pb2.SetResponse(
             Header = header,
-            Ok = Ok,
-            Key = request.Key,
-            Value = str(params.value)
+            Pairs=pairs
         )
-        
-    def SetMultiple(self, request:comms_pb2.SetMultipleRequest, context):
-        header = comms_pb2.Header(Src=request.Header.Src, Dst=request.Header.Dst)
 
 # need to use specified port in the oxigraph instance
 async def serve(port:str="50062") -> None:
