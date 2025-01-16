@@ -1,5 +1,6 @@
 from modbus_parser import MODbusParams
 import client
+import comms_pb2
 # functions
 READ_REGISTER = "read-register"
 READ_MULTIPLE_REGISTERS = "read-registers"
@@ -24,11 +25,12 @@ URL_1 = "modbus://192.168.13.3:502/read-registers/?type=f"
 
 url_1 = "modbus://{}:{}/{}/{}?type=f".format(host_1, port_number, function_1, address_1)
 url_2 = "modbus://{}:{}/{}/{}?type=f".format(host_1, port_number, function_1, address_2)
-url_3 = "modbus://{}:{}/{}/{}?type=h&value=20".format(host_1, port_number, function_2, address_3)
-url_4 = "modbus://{}:{}/{}/{}?type=h&value=333".format(host_1, port_number, function_2, address_4)
+url_3 = "modbus://{}:{}/{}/{}?type=h".format(host_1, port_number, function_2, address_3) # &value=20
+url_4 = "modbus://{}:{}/{}/{}?type=h".format(host_1, port_number, function_2, address_4) # &value=333
 full_url_list = [url_1, url_2, url_3, url_4]
 read_tests = [url_1, url_2]
 write_tests = [url_3, url_4]
+write_values = ["333", "333"]
 
 def get_test(key:[str]):
     res = client.Get(key)
@@ -39,9 +41,13 @@ def get_test(key:[str]):
     # for r in res:
      #   print("{} -> '{}'".format(r.Key, r.Value))
 
-def set_test(key: str):
-    res = client.Set(key)
-    print("{} -> '{}'".format(key, res))
+def set_test(keys: [str], values: [str]):
+    pairs = []
+    for i in range(len(keys)):
+        pair = comms_pb2.SetPair(Key=write_tests[i], Value=write_values[i], Ok = False)
+        pairs.append(pair)
+    res = client.Set(pairs)
+    print("{} -> '{}'".format(keys, res))
 
 # TODO compile a regex with named matches to extract the parameters needed by 
 # py-modbus to get the actual value.
@@ -56,13 +62,11 @@ if __name__ == "__main__":
         params.PrintParams()
 
     # test Get()
+    """
     get_test(read_tests)
 
     """
-    test Set()
-    for t in write_tests:
-        set_test(t)
+    #test Set()
+    set_test(write_tests, write_values)
     # make sure read the values you set 
-    for t in write_tests:
-        get_test(t)
-    """
+    get_test(write_tests)

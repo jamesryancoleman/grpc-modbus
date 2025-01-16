@@ -19,14 +19,16 @@ def Get(key:[str], addr="localhost:50062") -> str:
     with grpc.insecure_channel(addr) as channel:
         stub = comms_pb2_grpc.GetSetRunStub(channel)
         result:comms_pb2.GetResponse
-        result = stub.Get(comms_pb2.GetRequest(
+        request = comms_pb2.GetRequest(
             Header=header,
             Keys=key,
-        ))
+        )
+        print(request)
+        result = stub.Get(request)
         return result.Pairs
 
 
-def Set(key:str, addr="localhost:50062") -> comms_pb2.SetResponse:
+def Set(key:[comms_pb2.SetPair], addr="localhost:50062") -> comms_pb2.SetResponse:
     header = comms_pb2.Header(Src="localhost:2822")
     
     result:comms_pb2.SetResponse
@@ -36,7 +38,7 @@ def Set(key:str, addr="localhost:50062") -> comms_pb2.SetResponse:
 
         result = stub.Set(comms_pb2.SetRequest(
             Header=header,
-            Key=key,
+            Pairs=key,
         ))
     
     return result

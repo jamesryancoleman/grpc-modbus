@@ -55,8 +55,13 @@ def write_register(client: ModbusTcpClient, address: str, value: str) -> Union[s
     Returns a string representation of the response (ex. WriteMultipleRegisterResponse (4104,1))
     """
     response = None
+    print("address is ")
+    print(address)
+    print("value is ")
+    print(value)
+    value = [int(value)]
     try:
-        response = client.write_registers(address=int(address), values=int(value), slave=1)
+        response = client.write_registers(address=int(address), values=value, slave=1)
         print("Response is: ", response)
     except ModbusException as exc:
         print(f"Modbus exception: {exc!s}")
@@ -90,13 +95,16 @@ def read_register(client: ModbusTcpClient, type_param: str, address: str) -> Non
         rr = client.read_holding_registers(address=int(address), count=count, slave=1)
     except ModbusException as exc:
         _logger.error(f"Modbus exception: {exc!s}")
-        error = True
+        print(rr)
         if rr.isError():
             _logger.error(f"Error")
             error = True
         if isinstance(rr, ExceptionResponse):
             _logger.error(f"Response exception: {rr!s}")
             error = True
+    if rr is None:
+        print("rr is none")
+        error = True
 
     _logger.info(f"*** READ *** of address {address} = {rr}")
     value = client.convert_from_registers(rr.registers, data_type) # took out the *factor, but can add it in later
@@ -199,7 +207,7 @@ class modbusRPCServer(comms_pb2_grpc.GetSetRunServicer):
             if response_value:
                 Ok = True
             # construct pair and add it to the list
-            pair = comms_pb2.SetPair(Key=pair.Key, Value=response_value, Ok=Ok)
+            pair = comms_pb2.SetPair(Key=pair.Key, Value=str(response_value), Ok=Ok)
             pairs.append(pair)
 
         return comms_pb2.SetResponse(
@@ -212,7 +220,7 @@ async def serve(port:str="50062") -> None:
     # GRPC set up
     server = grpc.aio.server()
     comms_pb2_grpc.add_GetSetRunServicer_to_server(modbusRPCServer(), server)
-    server.add_insecure_port("[::]:" + port)
+    server.add_insecure_port("0.0.0.0:" + port)
     logging.info("Server started. Listening on port: %s", port)
     await server.start()
     # server.wait_for_termination()
