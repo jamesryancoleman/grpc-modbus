@@ -154,7 +154,8 @@ class modbusRPCServer(comms_pb2_grpc.GetSetRunServicer):
             # form the GetPair
             pair = comms_pb2.GetPair(
                 Key=key,
-                Value = str(value)
+                Value = str(value),
+                Error = None
             )
             # add GetPair to the list of pairs to return 
             pairs.append(pair)

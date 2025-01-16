@@ -1,7 +1,7 @@
 import sys
 import grpc
-import device_pb2
-import device_pb2_grpc
+import comms_pb2
+import comms_pb2_grpc
 
 # device_address = "192.168.13.3"
 # description = "Power Monitor"
@@ -13,40 +13,28 @@ import device_pb2_grpc
     
 """
 
-def Get(key:str, addr="localhost:50062") -> str:
-    header = device_pb2.Header(Src="localhost:2822", Dst=addr)
+def Get(key:[str], addr="localhost:50062") -> str:
+    header = comms_pb2.Header(Src="localhost:2822", Dst=addr)
 
     with grpc.insecure_channel(addr) as channel:
-        stub = device_pb2_grpc.GetSetRunStub(channel)
-        result:device_pb2.GetResponse
-        result = stub.Get(device_pb2.GetRequest(
+        stub = comms_pb2_grpc.GetSetRunStub(channel)
+        result:comms_pb2.GetResponse
+        result = stub.Get(comms_pb2.GetRequest(
             Header=header,
-            Key=key,
+            Keys=key,
         ))
-        return result.Value
-    
+        return result.Pairs
 
-def GetMultiple(keys:list[str], addr="localhost:50062") -> list[device_pb2.GetResponse]:
-    header = device_pb2.Header(Src="localhost:2822", Dst=addr)
-    with grpc.insecure_channel(addr) as channel:
-        stub = device_pb2_grpc.GetSetRunStub(channel)
-        result:device_pb2.GetMultipleResponse
-        result = stub.GetMultiple(device_pb2.GetMultipleRequest(
-            Header=header,
-            Keys=keys
-        ))
-    
-    return result.Responses
 
-def Set(key:str, addr="localhost:50062") -> device_pb2.SetResponse:
-    header = device_pb2.Header(Src="localhost:2822")
+def Set(key:str, addr="localhost:50062") -> comms_pb2.SetResponse:
+    header = comms_pb2.Header(Src="localhost:2822")
     
-    result:device_pb2.SetResponse
+    result:comms_pb2.SetResponse
 
     with grpc.insecure_channel(addr) as channel:
-        stub = device_pb2_grpc.GetSetRunStub(channel)
+        stub = comms_pb2_grpc.GetSetRunStub(channel)
 
-        result = stub.Set(device_pb2.SetRequest(
+        result = stub.Set(comms_pb2.SetRequest(
             Header=header,
             Key=key,
         ))

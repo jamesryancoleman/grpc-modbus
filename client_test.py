@@ -5,7 +5,7 @@ READ_REGISTER = "read-register"
 READ_MULTIPLE_REGISTERS = "read-registers"
 WRITE_REGISTER = "write-register"
 # test parameters
-host_1 = "192.168.13.3"   # change this to the right IP address
+host_1 = "192.168.13.144"   # change this to the right IP address
 function_1 = READ_MULTIPLE_REGISTERS
 function_2 = WRITE_REGISTER
 
@@ -30,13 +30,10 @@ full_url_list = [url_1, url_2, url_3, url_4]
 read_tests = [url_1, url_2]
 write_tests = [url_3, url_4]
 
-def get_test(key:str):
+def get_test(key:[str]):
     res = client.Get(key)
     print("{} -> '{}'".format(key, res))
 
-
-def get_multiple_test(keys:list[str]):
-    pass
 
     # res = client.GetMultiple(keys)
     # for r in res:
@@ -59,15 +56,13 @@ if __name__ == "__main__":
         params.PrintParams()
 
     # test Get()
-    for t in read_tests:
-        get_test(t)
+    get_test(read_tests)
 
-    # test GetMultiple()
-    # get_multiple_test([url_1,url_2])
-
-    # test Set()
+    """
+    test Set()
     for t in write_tests:
         set_test(t)
     # make sure read the values you set 
     for t in write_tests:
         get_test(t)
+    """
