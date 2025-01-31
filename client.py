@@ -13,7 +13,7 @@ import comms_pb2_grpc
     
 """
 
-def Get(key:[str], addr="localhost:50062") -> str:
+def Get(keys:list[str], addr="localhost:50062") -> list[comms_pb2.GetPair]:
     header = comms_pb2.Header(Src="localhost:2822", Dst=addr)
 
     with grpc.insecure_channel(addr) as channel:
@@ -21,26 +21,25 @@ def Get(key:[str], addr="localhost:50062") -> str:
         result:comms_pb2.GetResponse
         request = comms_pb2.GetRequest(
             Header=header,
-            Keys=key,
+            Keys=keys,
         )
-        print(request)
+        # print(request)
         result = stub.Get(request)
-        return result.Pairs
+    return result.Pairs
 
 
-def Set(key:[comms_pb2.SetPair], addr="localhost:50062") -> comms_pb2.SetResponse:
+def Set(pairs:list[comms_pb2.SetPair], addr="localhost:50062") -> list[comms_pb2.SetPair]:
     header = comms_pb2.Header(Src="localhost:2822")
     
     result:comms_pb2.SetResponse
-
     with grpc.insecure_channel(addr) as channel:
         stub = comms_pb2_grpc.GetSetRunStub(channel)
 
         result = stub.Set(comms_pb2.SetRequest(
             Header=header,
-            Pairs=key,
+            Pairs=pairs,
         ))
     
-    return result
+    return result.Pairs
 if __name__=="__main__":
     pass
