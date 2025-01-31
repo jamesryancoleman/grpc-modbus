@@ -4,7 +4,7 @@ A gRPC server to handle modbus work.
 
 """
 import asyncio
-from modbus_parser import MODbusParams
+from modbus_parser import ModbusParams
 from pymodbus import pymodbus_apply_logging_config
 # --------------------------------------------------------------------------- #
 # import the various client implementations
@@ -20,6 +20,9 @@ import comms_pb2_grpc
 import logging
 from enum import Enum
 from typing import Union
+
+# this machine
+SERVE_PORT = "50063"
 
 pymodbus_apply_logging_config(logging.ERROR)
 
@@ -39,7 +42,7 @@ def get_data_type(format: str) -> Enum:
         if data_type.value[0] == format:
             return data_type
         
-def write_register(client: ModbusTcpClient, address: str, value: str) -> Union[str, None]:
+def write_register(client: ModbusTcpClient, address: str, value: str) -> Union[bool, None]:
     """
     Writes a register from a Modbus device using a Modbus TCP client.
 
@@ -55,19 +58,24 @@ def write_register(client: ModbusTcpClient, address: str, value: str) -> Union[s
     Returns a string representation of the response (ex. WriteMultipleRegisterResponse (4104,1))
     """
     response = None
-    print("address is ")
-    print(address)
-    print("value is ")
-    print(value)
+    ok:bool = False
+    # print("address is ")
+    # print(address)
+    # print("value is ")
+    # print(value)
     value = [int(value)]
     try:
         response = client.write_registers(address=int(address), values=value, slave=1)
-        print("Response is: ", response)
+        # print("Response (type={}): {}\n".format(type(response), response))
+        if response.status == 1:
+            ok = True
+        print("Response status {} code (success={})".format(response.status, ok))
     except ModbusException as exc:
         print(f"Modbus exception: {exc!s}")
         error = True
+        # returns false by default
             
-    return(str(response)) # return response or None
+    return ok # return response or None
 
 def read_register(client: ModbusTcpClient, type_param: str, address: str) -> None:
     """
@@ -135,7 +143,8 @@ class modbusRPCServer(comms_pb2_grpc.GetSetRunServicer):
     """
 
     def Get(self, request:comms_pb2.GetRequest, context):
-        logging.info('received Get request: ', request)
+        # logging.info('received Get request: ', request) # this causes an error
+        print("received Get request from {}".format(request.Header.Src))
 
         header = comms_pb2.Header(Src=request.Header.Dst, Dst=request.Header.Src)
         pairs = []
@@ -143,14 +152,14 @@ class modbusRPCServer(comms_pb2_grpc.GetSetRunServicer):
         # loop over all keys in the request.Keys list
         for key in request.Keys:
             # parse the params
-            params = MODbusParams(key)
+            params = ModbusParams(key)
 
             # create and connect to the client
             client: ModbusTcpClient = ModbusTcpClient(
-            host=params.host,
-            port=params.port,
-            framer=FramerType.SOCKET,
-            timeout=5,
+                host=params.host,
+                port=params.port,
+                framer=FramerType.SOCKET,
+                timeout=5,
             )
             client.connect()
             _logger.info("### Client connected")
@@ -163,7 +172,8 @@ class modbusRPCServer(comms_pb2_grpc.GetSetRunServicer):
             pair = comms_pb2.GetPair(
                 Key=key,
                 Value = str(value),
-                Error = None
+                Dtype = comms_pb2.FLOAT,
+                Error = None,
             )
             # add GetPair to the list of pairs to return 
             pairs.append(pair)
@@ -181,13 +191,14 @@ class modbusRPCServer(comms_pb2_grpc.GetSetRunServicer):
 
     def Set(self, request:comms_pb2.SetRequest, context):
         header = comms_pb2.Header(Src=request.Header.Src, Dst=request.Header.Dst)
-        logging.info('received Set request: ', request)
+        # logging.info('received Set request: ', request)  # this causes an error
+        print("received Set request from {}".format(request.Header.Src))
         pairs = []
         # loop over all key-value pairs
         for pair in request.Pairs:
-            Ok = False
+            ok = False
             # parse the params
-            params = MODbusParams(pair.Key)
+            params = ModbusParams(pair.Key)
             params.PrintParams()
 
             # create and connect to the client
@@ -202,12 +213,13 @@ class modbusRPCServer(comms_pb2_grpc.GetSetRunServicer):
             sleep(1)
 
             # write to the register
-            response_value = write_register(client, params.address, pair.Value)
-        
-            if response_value:
-                Ok = True
+            ok = write_register(client, params.address, pair.Value)
+
+            # JC note to CR: i made write_register return a bool if success
+            # if response_value:
+            #     ok = True
             # construct pair and add it to the list
-            pair = comms_pb2.SetPair(Key=pair.Key, Value=str(response_value), Ok=Ok)
+            pair = comms_pb2.SetPair(Key=pair.Key, Value=pair.Value, Ok=ok)
             pairs.append(pair)
 
         return comms_pb2.SetResponse(
@@ -216,7 +228,7 @@ class modbusRPCServer(comms_pb2_grpc.GetSetRunServicer):
         )
 
 # need to use specified port in the oxigraph instance
-async def serve(port:str="50062") -> None:
+async def serve(port:str=SERVE_PORT) -> None:
     # GRPC set up
     server = grpc.aio.server()
     comms_pb2_grpc.add_GetSetRunServicer_to_server(modbusRPCServer(), server)
