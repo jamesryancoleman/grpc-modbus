@@ -16,6 +16,8 @@ function_2 = WRITE_REGISTER
 
 address_1 = "16386" # voltage
 address_2 = "16402" # current
+address_5 = "16412" # power
+address_6 = "16384" # frequency
 address_3 = "4104" # CT1 (current transformer)
 address_4 = "4105" # CT2 (current transformer)
 
@@ -29,6 +31,9 @@ URL_1 = "modbus://192.168.13.3:502/read-registers/?type=f"
 
 url_1 = "modbus://{}:{}/{}/{}?type=f".format(host_1, port_number, function_1, address_1)
 url_2 = "modbus://{}:{}/{}/{}?type=f".format(host_1, port_number, function_1, address_2)
+url_5 = "modbus://{}:{}/{}/{}?type=f".format(host_1, port_number, function_1, address_5)
+url_6 = "modbus://{}:{}/{}/{}?type=f".format(host_1, port_number, function_1, address_6)
+
 url_3 = "modbus://{}:{}/{}/{}?type=h".format(host_1, port_number, function_2, address_3) # &value=20
 url_4 = "modbus://{}:{}/{}/{}?type=h".format(host_1, port_number, function_2, address_4) # &value=333
 full_url_list = [url_1, url_2, url_3, url_4]
@@ -46,12 +51,15 @@ def get_test(key:list[str]):
         print("\t{} -> '{}'".format(p.Key, p.Value))
     print("== get test completed in {} ==".format(completed_in))
 
-def set_test(keys:list[str], values: list[str]):
+def set_test(keys:list[str], values:list[str]):
     print("== started set test ==")
     start = dt.datetime.now()
     pairs = []
     for i in range(len(keys)):
-        pair = comms_pb2.SetPair(Key=write_tests[i], Value=write_values[i], Ok = False)
+        key = keys[i]
+        value = values[i]
+        print(key, value)
+        pair = comms_pb2.SetPair(Key=key, Value=value, Ok = False)
         pairs.append(pair)
     pairs = client.Set(pairs, SERVER_ADDR)
     end = dt.datetime.now()
@@ -63,6 +71,8 @@ def set_test(keys:list[str], values: list[str]):
         print("\t{} -> '{}' ({})".format(p.Key, p.Value, ok))
     print("== set test completed in {} ==".format(completed_in))
 
+
+
 # TODO compile a regex with named matches to extract the parameters needed by 
 # py-modbus to get the actual value.
 # probably something like
@@ -70,18 +80,21 @@ def set_test(keys:list[str], values: list[str]):
 modbus_pattern = r"^modbus://(?P<host>[a-zA-Z0-9.-]+):(?P<port>[0-9]+)/(?P<function>[a-zA-Z-]+)/(?P<address>[0-9]+)/\?type=(?P<type>[a-zA-Z]+)&value=(?P<value>[0-9]+)"
 if __name__ == "__main__":
     # test the parser
-    for url in full_url_list:
-        print("== Testing params parser ==")
-        params = ModbusParams(url)
-        params.PrintParams()
-        print("== completed params parser test ==")
-
+    # for url in full_url_list:
+    #     print("== Testing params parser ==")
+    #     params = ModbusParams(url)
+    #     params.PrintParams()
+    #     print("== completed params parser test ==")
     # test Get()
     """
     get_test(read_tests)
 
     """
+    # change mode 
+    # set_test(["modbus://{}:{}/{}/{}?type=h".format(host_1, port_number, function_2, 4125)], ["1"])
     #test Set()
-    set_test(write_tests, write_values)
-    # make sure read the values you set 
-    get_test(write_tests)
+    # set_test(write_tests, write_values)
+    # # make sure read the values you set 
+    # get_test(write_tests)
+
+    get_test([url_1, url_2, url_5, url_6])
