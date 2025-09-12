@@ -15,8 +15,8 @@ from pymodbus.pdu import ExceptionResponse
 from pymodbus import FramerType
 from time import sleep
 import grpc
-import comms_pb2
-import comms_pb2_grpc
+import common_pb2
+import common_pb2_grpc
 import logging
 from enum import Enum
 from typing import Union
@@ -122,31 +122,31 @@ def read_register(client: ModbusTcpClient, type_param: str, address: str) -> Non
 
 # TODO: GetMultiple becomes Get, Set Multiple becomes Set. Remove old get and set.
 # Get now takes keys, a []str, and returns a GetResponse with field Pairs, as list of GetPairs.
-# For each key in keys, return a comms.GetPair(Key=k, Value=v, Error=None|err).
+# For each key in keys, return a common.GetPair(Key=k, Value=v, Error=None|err).
 # Set now takes a list of SetPairs(key, value)
 # Set now returns a list of SetPair with the Ok field set to True if it worked,
 # or False if it failed.
-class modbusRPCServer(comms_pb2_grpc.GetSetRunServicer): 
+class modbusRPCServer(common_pb2_grpc.GetSetRunServicer): 
     """
     A gRPC server implementation for handling Modbus RPC requests.
 
-    This class extends the GetSetRunServicer provided by the comms_pb2_grpc module,
+    This class extends the GetSetRunServicer provided by the common_pb2_grpc module,
     implementing methods to facilitate Modbus communication over gRPC. It serves as 
     the interface for clients to perform read and write operations on Modbus devices.
     
     Methods:
-        Get(request: comms_pb2.GetRequest, context): 
+        Get(request: common_pb2.GetRequest, context): 
             Handles requests to read data from a Modbus device.
         
-        Set(request: comms_pb2.SetRequest, context): 
+        Set(request: common_pb2.SetRequest, context): 
             Handles requests to write data to a Modbus device.
     """
 
-    def Get(self, request:comms_pb2.GetRequest, context):
+    def Get(self, request:common_pb2.GetRequest, context):
         # logging.info('received Get request: ', request) # this causes an error
         print("received Get request from {}".format(request.Header.Src))
 
-        header = comms_pb2.Header(Src=request.Header.Dst, Dst=request.Header.Src)
+        header = common_pb2.Header(Src=request.Header.Dst, Dst=request.Header.Src)
         pairs = []
 
         # loop over all keys in the request.Keys list
@@ -169,10 +169,10 @@ class modbusRPCServer(comms_pb2_grpc.GetSetRunServicer):
             if value is None:
                 value = "Nothing"
             # form the GetPair
-            pair = comms_pb2.GetPair(
+            pair = common_pb2.GetPair(
                 Key=key,
                 Value = str(value),
-                Dtype = comms_pb2.FLOAT,
+                Dtype = common_pb2.FLOAT,
                 Error = None,
             )
             # add GetPair to the list of pairs to return 
@@ -184,13 +184,13 @@ class modbusRPCServer(comms_pb2_grpc.GetSetRunServicer):
         _logger.info("### End of Get -> Now Making the GetResponse")
 
         # change the GetResponse
-        return comms_pb2.GetResponse(
+        return common_pb2.GetResponse(
             Header=header,
             Pairs=pairs,
         )
 
-    def Set(self, request:comms_pb2.SetRequest, context):
-        header = comms_pb2.Header(Src=request.Header.Src, Dst=request.Header.Dst)
+    def Set(self, request:common_pb2.SetRequest, context):
+        header = common_pb2.Header(Src=request.Header.Src, Dst=request.Header.Dst)
         # logging.info('received Set request: ', request)  # this causes an error
         print("received Set request from {}".format(request.Header.Src))
         pairs = []
@@ -219,10 +219,10 @@ class modbusRPCServer(comms_pb2_grpc.GetSetRunServicer):
             # if response_value:
             #     ok = True
             # construct pair and add it to the list
-            pair = comms_pb2.SetPair(Key=pair.Key, Value=pair.Value, Ok=ok)
+            pair = common_pb2.SetPair(Key=pair.Key, Value=pair.Value, Ok=ok)
             pairs.append(pair)
 
-        return comms_pb2.SetResponse(
+        return common_pb2.SetResponse(
             Header = header,
             Pairs=pairs
         )
@@ -231,7 +231,7 @@ class modbusRPCServer(comms_pb2_grpc.GetSetRunServicer):
 async def serve(port:str=SERVE_PORT) -> None:
     # GRPC set up
     server = grpc.aio.server()
-    comms_pb2_grpc.add_GetSetRunServicer_to_server(modbusRPCServer(), server)
+    common_pb2_grpc.add_GetSetRunServicer_to_server(modbusRPCServer(), server)
     server.add_insecure_port("0.0.0.0:" + port)
     logging.info("Server started. Listening on port: %s", port)
     await server.start()
