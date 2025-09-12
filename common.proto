@@ -89,13 +89,13 @@ enum GetError {
     GET_ERROR_ACCESS_DENIED = 7;
 }
            
-// the GetSetRun service provides the fundamental driver functionality for Setting 
-// values, getting them, and running commands.
-service GetSetRun {
-    // rpc for getting a value from a driver
+// the DeviceControl service provides the fundamental driver functionality for
+// Setting and Getting values from devices independent of the underlying protocol.
+service DeviceControl {
+    // get a value from a driver
     rpc Get(GetRequest) returns (GetResponse);
     
-    // rpc for setting a value on a driver
+    // set a value on a driver
     rpc Set(SetRequest) returns (SetResponse);
 }
 

@@ -1,7 +1,7 @@
 import sys
 import grpc
-import comms_pb2
-import comms_pb2_grpc
+import common_pb2
+import common_pb2_grpc
 
 # device_address = "192.168.13.3"
 # description = "Power Monitor"
@@ -13,13 +13,13 @@ import comms_pb2_grpc
     
 """
 
-def Get(keys:list[str], addr="localhost:50062") -> list[comms_pb2.GetPair]:
-    header = comms_pb2.Header(Src="localhost:2822", Dst=addr)
+def Get(keys:list[str], addr="localhost:50062") -> list[common_pb2.GetPair]:
+    header = common_pb2.Header(Src="localhost:2822", Dst=addr)
 
     with grpc.insecure_channel(addr) as channel:
-        stub = comms_pb2_grpc.GetSetRunStub(channel)
-        result:comms_pb2.GetResponse
-        request = comms_pb2.GetRequest(
+        stub = common_pb2_grpc.GetSetRunStub(channel)
+        result:common_pb2.GetResponse
+        request = common_pb2.GetRequest(
             Header=header,
             Keys=keys,
         )
@@ -28,14 +28,14 @@ def Get(keys:list[str], addr="localhost:50062") -> list[comms_pb2.GetPair]:
     return result.Pairs
 
 
-def Set(pairs:list[comms_pb2.SetPair], addr="localhost:50062") -> list[comms_pb2.SetPair]:
-    header = comms_pb2.Header(Src="localhost:2822")
+def Set(pairs:list[common_pb2.SetPair], addr="localhost:50062") -> list[common_pb2.SetPair]:
+    header = common_pb2.Header(Src="localhost:2822")
     
-    result:comms_pb2.SetResponse
+    result:common_pb2.SetResponse
     with grpc.insecure_channel(addr) as channel:
-        stub = comms_pb2_grpc.GetSetRunStub(channel)
+        stub = common_pb2_grpc.GetSetRunStub(channel)
 
-        result = stub.Set(comms_pb2.SetRequest(
+        result = stub.Set(common_pb2.SetRequest(
             Header=header,
             Pairs=pairs,
         ))

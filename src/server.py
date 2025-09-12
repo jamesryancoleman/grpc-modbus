@@ -4,7 +4,7 @@ A gRPC server to handle modbus work.
 
 """
 import asyncio
-from modbus_parser import ModbusParams
+from src.modbus_parser import ModbusParams
 from pymodbus import pymodbus_apply_logging_config
 # --------------------------------------------------------------------------- #
 # import the various client implementations
@@ -15,8 +15,8 @@ from pymodbus.pdu import ExceptionResponse
 from pymodbus import FramerType
 from time import sleep
 import grpc
-import common_pb2
-import common_pb2_grpc
+import src.common_pb2 as common_pb2
+import src.common_pb2_grpc as common_pb2_grpc
 import logging
 from enum import Enum
 from typing import Union
@@ -59,10 +59,6 @@ def write_register(client: ModbusTcpClient, address: str, value: str) -> Union[b
     """
     response = None
     ok:bool = False
-    # print("address is ")
-    # print(address)
-    # print("value is ")
-    # print(value)
     value = [int(value)]
     try:
         response = client.write_registers(address=int(address), values=value, slave=1)
@@ -120,17 +116,12 @@ def read_register(client: ModbusTcpClient, type_param: str, address: str) -> Non
         value = "None"
     return value
 
-# TODO: GetMultiple becomes Get, Set Multiple becomes Set. Remove old get and set.
-# Get now takes keys, a []str, and returns a GetResponse with field Pairs, as list of GetPairs.
-# For each key in keys, return a common.GetPair(Key=k, Value=v, Error=None|err).
-# Set now takes a list of SetPairs(key, value)
-# Set now returns a list of SetPair with the Ok field set to True if it worked,
-# or False if it failed.
-class modbusRPCServer(common_pb2_grpc.GetSetRunServicer): 
+
+class modbusRPCServer(common_pb2_grpc.DeviceControlServicer): 
     """
     A gRPC server implementation for handling Modbus RPC requests.
 
-    This class extends the GetSetRunServicer provided by the common_pb2_grpc module,
+    This class extends the DeviceControlServicer provided by the common_pb2_grpc module,
     implementing methods to facilitate Modbus communication over gRPC. It serves as 
     the interface for clients to perform read and write operations on Modbus devices.
     
@@ -144,7 +135,7 @@ class modbusRPCServer(common_pb2_grpc.GetSetRunServicer):
 
     def Get(self, request:common_pb2.GetRequest, context):
         # logging.info('received Get request: ', request) # this causes an error
-        print("received Get request from {}".format(request.Header.Src))
+        _logger.info("received Get request from {}".format(request.Header.Src))
 
         header = common_pb2.Header(Src=request.Header.Dst, Dst=request.Header.Src)
         pairs = []
@@ -163,7 +154,8 @@ class modbusRPCServer(common_pb2_grpc.GetSetRunServicer):
             )
             client.connect()
             _logger.info("### Client connected")
-            sleep(1)
+            # sleep(0.5) # not sure if this is necessary
+
             # read the register
             value = read_register(client, params.type_param, params.address)
             if value is None:
@@ -228,20 +220,21 @@ class modbusRPCServer(common_pb2_grpc.GetSetRunServicer):
         )
 
 # need to use specified port in the oxigraph instance
-async def serve(port:str=SERVE_PORT) -> None:
+async def serve(port:str=SERVE_PORT) -> grpc.aio.Server:
     # GRPC set up
     server = grpc.aio.server()
-    common_pb2_grpc.add_GetSetRunServicer_to_server(modbusRPCServer(), server)
+    common_pb2_grpc.add_DeviceControlServicer_to_server(modbusRPCServer(), server)
     server.add_insecure_port("0.0.0.0:" + port)
     logging.info("Server started. Listening on port: %s", port)
     await server.start()
-    # server.wait_for_termination()
 
-    async def server_graceful_shutdown():
-        logging.info("Starting graceful shutdown")
-        await server.stop(5)
+    # async def server_graceful_shutdown():
+    #     logging.info("Starting graceful shutdown")
+    #     await server.stop(5)
+
+    logging.debug("returning server")
     
-    await server.wait_for_termination()
+    return server
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)

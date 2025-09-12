@@ -3,7 +3,7 @@
 import grpc
 import warnings
 
-import common_pb2 as common__pb2
+from . import common_pb2 as common__pb2
 
 GRPC_GENERATED_VERSION = '1.74.0'
 GRPC_VERSION = grpc.__version__
@@ -25,9 +25,9 @@ if _version_not_supported:
     )
 
 
-class GetSetRunStub(object):
-    """the GetSetRun service provides the fundamental driver functionality for Setting 
-    values, getting them, and running commands.
+class DeviceControlStub(object):
+    """the DeviceControl service provides the fundamental driver functionality for
+    Setting and Getting values from devices independent of the underlying protocol.
     """
 
     def __init__(self, channel):
@@ -37,38 +37,38 @@ class GetSetRunStub(object):
             channel: A grpc.Channel.
         """
         self.Get = channel.unary_unary(
-                '/bos.GetSetRun/Get',
+                '/bos.DeviceControl/Get',
                 request_serializer=common__pb2.GetRequest.SerializeToString,
                 response_deserializer=common__pb2.GetResponse.FromString,
                 _registered_method=True)
         self.Set = channel.unary_unary(
-                '/bos.GetSetRun/Set',
+                '/bos.DeviceControl/Set',
                 request_serializer=common__pb2.SetRequest.SerializeToString,
                 response_deserializer=common__pb2.SetResponse.FromString,
                 _registered_method=True)
 
 
-class GetSetRunServicer(object):
-    """the GetSetRun service provides the fundamental driver functionality for Setting 
-    values, getting them, and running commands.
+class DeviceControlServicer(object):
+    """the DeviceControl service provides the fundamental driver functionality for
+    Setting and Getting values from devices independent of the underlying protocol.
     """
 
     def Get(self, request, context):
-        """rpc for getting a value from a driver
+        """get a value from a driver
         """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
     def Set(self, request, context):
-        """rpc for setting a value on a driver
+        """set a value on a driver
         """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
 
-def add_GetSetRunServicer_to_server(servicer, server):
+def add_DeviceControlServicer_to_server(servicer, server):
     rpc_method_handlers = {
             'Get': grpc.unary_unary_rpc_method_handler(
                     servicer.Get,
@@ -82,15 +82,15 @@ def add_GetSetRunServicer_to_server(servicer, server):
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
-            'bos.GetSetRun', rpc_method_handlers)
+            'bos.DeviceControl', rpc_method_handlers)
     server.add_generic_rpc_handlers((generic_handler,))
-    server.add_registered_method_handlers('bos.GetSetRun', rpc_method_handlers)
+    server.add_registered_method_handlers('bos.DeviceControl', rpc_method_handlers)
 
 
  # This class is part of an EXPERIMENTAL API.
-class GetSetRun(object):
-    """the GetSetRun service provides the fundamental driver functionality for Setting 
-    values, getting them, and running commands.
+class DeviceControl(object):
+    """the DeviceControl service provides the fundamental driver functionality for
+    Setting and Getting values from devices independent of the underlying protocol.
     """
 
     @staticmethod
@@ -107,7 +107,7 @@ class GetSetRun(object):
         return grpc.experimental.unary_unary(
             request,
             target,
-            '/bos.GetSetRun/Get',
+            '/bos.DeviceControl/Get',
             common__pb2.GetRequest.SerializeToString,
             common__pb2.GetResponse.FromString,
             options,
@@ -134,7 +134,7 @@ class GetSetRun(object):
         return grpc.experimental.unary_unary(
             request,
             target,
-            '/bos.GetSetRun/Set',
+            '/bos.DeviceControl/Set',
             common__pb2.SetRequest.SerializeToString,
             common__pb2.SetResponse.FromString,
             options,
