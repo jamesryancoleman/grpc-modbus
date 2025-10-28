@@ -38,3 +38,5 @@ class TestParser(unittest.TestCase):
             # close the client
             client.close()
 
+    def test_write(self):
+        pass
